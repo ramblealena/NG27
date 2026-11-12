@@ -1,0 +1,1093 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Снег 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- only the glyphs of «Содержание» are downloaded -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@600&text=%D0%A1%D0%BE%D0%B4%D0%B5%D1%80%D0%B6%D0%B0%D0%BD%D0%B8%D0%B5&display=swap">
+<!-- article paragraphs (live text) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400&display=swap">
+<style>
+  :root {
+    --blue: #0c73fe;
+    --page: #e1e5ec;
+    --t: 320ms;                              /* header transition */
+    --ts: 360ms;                             /* snowman hide/show */
+    --ease: cubic-bezier(.22,.7,.2,1);
+    /* timing taken from aviasales.ru/psgr (Header_* styles):
+       bar height 0.15s, logo size 0.3s, same curve both directions */
+    --ease-site: cubic-bezier(.33, .96, .49, 1.01);
+    --ease-site-rev: cubic-bezier(.51, -.01, .67, .04);   /* time-mirror, for the snowman hiding */
+    --t-bar: 150ms;
+    --t-logo: 300ms;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--page); }
+  body { -webkit-tap-highlight-color: transparent; }
+
+  .screen {
+    position: relative;
+    width: 375px;
+    max-width: 100%;
+    margin: 0 auto;
+    background: var(--page);
+    overflow-x: clip;
+  }
+
+  /* page: gradient (scrolls with the page) → article card */
+  .gradient {
+    position: absolute;
+    z-index: 0;
+    left: 0; right: 0; top: 0;
+    height: 192px;
+    background: linear-gradient(to bottom, var(--blue) 52px, rgba(12,115,254,0) 192px);
+  }
+
+  /* ================= Fixed header =================
+     normal 52px ↔ compact 40px; everything animates with transform/opacity/clip-path */
+  .hdr {
+    position: fixed;
+    z-index: 10;
+    top: 0;
+    left: 0; right: 0;
+    margin: 0 auto;          /* centred without a transform → no half-pixel seam at the edge */
+    width: 375px;
+    max-width: 100%;
+    height: 90px;
+    pointer-events: none;
+  }
+  .hdr-bg {
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%;
+    height: 52px;
+    background: var(--blue);
+    transform-origin: 0 0;
+    transition: transform var(--t-bar) var(--ease-site);
+  }
+  .hdr.compact .hdr-bg { transform: scaleY(calc(40 / 52)); }
+
+  /* Going compact plays the expanding transition in reverse: the whole header
+     (bar, logo, icons, «Содержание», snowman) uses the time-mirrored curve,
+     so the snowman's disappearance is an exact mirror of his appearance
+     and still runs in lockstep with the logo. */
+  /* (the snowman alone uses the mirrored curve when hiding — see .snowman-wrap) */
+
+  /* animation layer: clipped to the header (plus the blue corners beside the card at the top of the page) */
+  .anim {
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%;
+    height: 90px;
+    clip-path: inset(0 0 38px 0);           /* 90 − 52 */
+    transition: clip-path var(--t-bar) var(--ease-site);
+  }
+  .hdr.compact .anim { clip-path: inset(0 0 50px 0); }   /* 90 − 40 */
+
+  /* logo & icons: same artwork, scaled 0.75 and moved to the compact positions */
+  .hdr-logo, .hdr-icon {
+    position: absolute;
+    transform-origin: 0 0;
+    transition: transform var(--t-logo) var(--ease-site);
+    -webkit-user-drag: none;
+  }
+  .hdr-logo         { left: 16px;  top: 10px; width: 84px; height: 32px; }
+  .hdr-icon         { top: 10px;  width: 32px; height: 32px; }
+  .hdr-icon.search  { left: 277px; }
+  .hdr-icon.menu    { left: 325px; }
+  .hdr.compact .hdr-logo        { transform: translate(-4px, -2px) scale(.75); }   /* → 12,8  63×24 */
+  .hdr.compact .hdr-icon.search { transform: translate(20px, -2px) scale(.75); }   /* → 297,8 24×24 */
+  .hdr.compact .hdr-icon.menu   { transform: translate(16px, -2px) scale(.75); }   /* → 341,8 24×24 */
+
+  /* «Содержание ⌄» appears in the compact state */
+  .hdr-toc {
+    position: absolute;
+    left: 128px; top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 19px;
+    color: #fff;
+    font: 600 15px/19px Inter, system-ui, sans-serif;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity var(--t-bar) var(--ease-site), transform var(--t-bar) var(--ease-site);
+  }
+  .hdr-toc svg { display: block; margin-top: 1px; }
+  .hdr.compact .hdr-toc { opacity: 1; transform: none; }
+
+  /* snowman hides in the compact state */
+  /* frame = the header's own box: 52px → 40px in step with the blue bar,
+     so the snowman is never visible below the header */
+  .snowman-clip {
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%;
+    height: 90px;
+    clip-path: inset(0 0 38px 0);           /* same clip as the snow layer */
+    transition: clip-path var(--t-bar) var(--ease-site);
+  }
+  .hdr.compact .snow { opacity: .6; }       /* compact header: snow 40% more transparent */
+  .hdr.compact .snowman-clip { clip-path: inset(0 0 50px 0); }
+
+  /* snowman: fade + shrink 35% + slide down inside that frame.
+     Hiding is the exact time-reverse of showing: slide/scale ease-in-out both ways;
+     opacity reaches 0 exactly halfway through hiding, and starts halfway through showing. */
+  .snowman-wrap {
+    position: absolute;
+    inset: 0;
+    transform-origin: 240.94px 52px;         /* snowman's base */
+    transition:
+      /* appears with the logo's duration and curve */
+      opacity   var(--t-logo) var(--ease-site),
+      scale     var(--t-logo) var(--ease-site),
+      translate var(--t-logo) var(--ease-site),
+      visibility 0s;
+  }
+  .hdr.compact .snowman-wrap {
+    opacity: 0;
+    translate: 0 12px;
+    scale: .3;
+    visibility: hidden;
+    transition:
+      /* hides together with the bar collapsing: same 0.15s and curve */
+      opacity   var(--t-bar) var(--ease-site),
+      scale     var(--t-bar) var(--ease-site),
+      translate var(--t-bar) var(--ease-site),
+      visibility 0s var(--t-bar);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root { --t: 120ms; --ts: 120ms; --t-bar: 80ms; --t-logo: 120ms; }
+  }
+
+  .snow {
+    --fade-from: 50; --fade-to: 90;          /* px: solid → clear (drawn inside the canvas) */
+    transition: opacity var(--t-bar) var(--ease-site);
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%;
+    height: 90px;
+    pointer-events: none;
+    /* bottom fade (solid to 50px → clear at 90px) is applied inside the canvas,
+       so the browser doesn't composite a CSS mask every frame */
+  }
+
+  /* ================= Fireworks (pure CSS animation) =================
+     JS only places the elements and sets per-spark variables;
+     every motion below is a CSS keyframe animation. */
+  .fireworks {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    contain: strict;          /* spark churn never triggers layout/paint outside this box */
+  }
+
+  /* rocket: a short glowing trail that climbs to the burst point */
+  .rocket {
+    position: absolute;
+    width: 2px;
+    height: 12px;
+    margin-left: -1px;
+    border-radius: 2px;
+    background: linear-gradient(to top, rgba(255,214,110,0), #ffe9a8 70%, #fff);
+    filter: drop-shadow(0 0 2px rgba(255,220,120,.9));
+    animation: rocket var(--dur) cubic-bezier(.25,.6,.4,1) forwards;
+  }
+  @keyframes rocket {
+    0%   { transform: translateY(var(--rise)) scaleY(.6); opacity: 0; }
+    15%  { opacity: 1; }
+    80%  { transform: translateY(0) scaleY(1);   opacity: 1; }
+    100% { transform: translateY(-2px) scaleY(.3); opacity: 0; }
+  }
+
+  /* burst: centre point; the whole burst sags a little under "gravity" */
+  .burst {
+    position: absolute;
+    width: 0; height: 0;
+    animation: sag var(--life) cubic-bezier(.5,0,.9,.6) forwards;
+  }
+  @keyframes sag {
+    0%, 35% { transform: translateY(0); }
+    100%    { transform: translateY(var(--sag)); }
+  }
+
+  /* bright flash at the moment of explosion */
+  .flash {
+    position: absolute;
+    left: calc(var(--r) * -0.7);
+    top:  calc(var(--r) * -0.7);
+    width:  calc(var(--r) * 1.4);
+    height: calc(var(--r) * 1.4);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,235,.95) 0, rgba(255,226,140,.55) 30%, rgba(255,200,80,0) 70%);
+    animation: flash 320ms ease-out forwards;
+  }
+  @keyframes flash {
+    0%   { transform: scale(.2); opacity: 0; }
+    20%  { transform: scale(.7); opacity: 1; }
+    100% { transform: scale(1.1); opacity: 0; }
+  }
+
+  /* spark: one element per streak — rotation is part of the animated transform,
+     origin sits on the burst centre (the streak's head) */
+  .spark {
+    position: absolute;
+    left: calc(var(--len) * -1);
+    top: calc(var(--w) / -2);
+    width: var(--len);
+    height: var(--w);
+    border-radius: var(--w);
+    background: linear-gradient(to right, rgba(255,190,60,0), var(--c) 60%, #fffbe8);
+    box-shadow: 0 0 2px rgba(255,214,90,.75);
+    transform-origin: 100% 50%;
+    animation: fly var(--life) cubic-bezier(.12,.75,.3,1) var(--delay) both;
+  }
+  @keyframes fly {
+    0%   { transform: rotate(var(--a)) translateX(0) scaleX(.15); opacity: 0; }
+    6%   { opacity: 1; }
+    22%  { transform: rotate(var(--a)) translateX(calc(var(--d) * .62)) scaleX(1); }
+    62%  { opacity: 1; }
+    100% { transform: rotate(var(--a)) translateX(var(--d)) scaleX(.12); opacity: 0; }
+  }
+
+  /* glitter sparks crackle and twinkle at the end of their flight */
+  .spark.glitter {
+    animation:
+      fly var(--life) cubic-bezier(.12,.75,.3,1) var(--delay) both,
+      twinkle var(--life) linear var(--delay) both;
+  }
+  @keyframes twinkle {
+    0%, 55% { filter: brightness(1); }
+    62%  { filter: brightness(1.8); }
+    68%  { filter: brightness(.4); }
+    74%  { filter: brightness(1.9); }
+    80%  { filter: brightness(.3); }
+    86%  { filter: brightness(1.7); }
+    100% { filter: brightness(.6); }
+  }
+
+  /* ================= Snowman ================= */
+  /* flat snowman from Figma (frame «snowman»), inline SVG.
+     With the rounded body he is 55px tall, so he's drawn at 92% to fit
+     the 52px header whole: head top ≈ 1px, bottom of the body ≈ 52px */
+  .snowman {
+    position: absolute;
+    left: 217.46px;     /* right arm tip ends 12px before the search icon frame (277px) */
+    top: 7.19px;        /* body/arms stay on the same spot whatever the frame size */
+    width: 47.84px;     /* Figma 52×58 at 92% */
+    height: 53.36px;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    transform-origin: 23.46px 52.64px;      /* bottom centre of the body */
+    -webkit-user-select: none; user-select: none;
+    touch-action: manipulation;
+    pointer-events: auto;
+  }
+  .snowman:focus-visible { outline: 2px solid #fff; outline-offset: 2px; border-radius: 8px; }
+  .snowman svg {
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+  /* pivots in the SVG's own units (viewBox starts at 0 0) */
+  .snowman svg g { transform-box: view-box; }
+  .arm-left   { transform-origin: 11.8px 34.3px; }   /* where the twig meets the body */
+  .arm-right  { transform-origin: 39.8px 33.7px; }
+  .scarf-tail { transform-origin: 34.5px 26.9px; }   /* under the knot */
+
+  .content {
+    position: relative;
+    z-index: 1;
+    display: block;
+    width: 375px;
+    max-width: 100%;
+    height: auto;
+    margin-top: 6px;                         /* card starts at 106px, under the promo */
+  }
+  /* promo banner under the header (Figma «Mobile 320»: 375×48 at y 52, r 16) */
+  .promo-m {
+    position: relative;
+    z-index: 1;
+    display: block;
+    width: 375px;
+    max-width: 100%;
+    height: 48px;
+    margin-top: 52px;
+    border-radius: 16px;
+    background: #d6c5fe url(assets/promo-m@3x.png) left center / 375px 48px no-repeat;
+  }
+  /* the screenshot ends mid-paragraph: fade it out and carry on with live text */
+  .content-more {
+    position: relative;
+    z-index: 1;
+    padding: 0 16px 32px;
+    margin-bottom: 120px;
+    background: #fff;
+    border-radius: 0 0 20px 20px;
+    font: 400 17px/25px Inter, system-ui, sans-serif;
+    color: #0c131d;
+  }
+  .content-more::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 100%;
+    height: 90px;
+    background: linear-gradient(rgba(255,255,255,0), #fff 80%);
+  }
+  .content-more p { margin: 0 0 16px; }
+
+  /* ================= Desktop (Figma «1280-») =================
+     fixed header like on the site: 68px → 44px compact; header items and
+     the snowman sit in a 1280px column centred on wider screens */
+  .page-d { display: none; }
+  .hdr-d  { display: none; }
+  @media (min-width: 1024px) {
+    html, body { background: #eff1f4; }
+    .screen, .hdr-logo, .hdr-toc, .hdr-icon { display: none; }
+
+    .hdr {
+      width: 100%;
+      max-width: none;
+      height: 130px;
+    }
+    .hdr-bg { height: 68px; }
+    .hdr.compact .hdr-bg { transform: scaleY(calc(44 / 68)); }
+    .anim, .snowman-clip { height: 130px; clip-path: inset(0 0 62px 0); }                 /* 130 − 68 */
+    .hdr.compact .anim, .hdr.compact .snowman-clip { clip-path: inset(0 0 86px 0); }     /* 130 − 44 */
+    .snow { height: 130px; --fade-from: 100; --fade-to: 130; }
+
+    /* snowman: right edge 100.3px inside the centred 1280 column (Figma x 1123.1) */
+    .snowman-wrap { transform-origin: calc(100% - (100% - min(1280px, 100%)) / 2 - 129.14px) 76.26px; }
+    .snowman {
+      left: auto;
+      right: calc((100% - min(1280px, 100%)) / 2 + 100.3px);
+      top: 14px;
+      width: 56.6px;           /* Figma 56.6×62.7 → 52×58 art at 108.85% */
+      height: 63.13px;
+      transform-origin: 27.76px 62.26px;
+    }
+
+    .hdr-d {
+      display: block;
+      position: absolute;
+      top: 0; left: 50%;
+      width: min(1280px, 100%);
+      height: 68px;
+      transform: translateX(-50%);
+    }
+    .hdr-d img { position: absolute; display: block; transition: transform var(--t-logo) var(--ease-site); }
+    .hdr-d .logo   { left: 44px; top: 12px; width: 117px; height: 43px; transform-origin: 0 0; }
+    .hdr-d .nav    { left: 50%; top: 14px; width: 611px; height: 40px; transform: translateX(-50%); }
+    .hdr-d .search { right: 44px; top: 16px; width: 36px; height: 36px; }
+    /* compact (44px bar): logo 117×43 → 80×30 like the site, everything re-centred vertically */
+    .hdr.compact .hdr-d .logo   { transform: translateY(-5px) scale(.684); }
+    .hdr.compact .hdr-d .nav    { transform: translate(-50%, -12px); }
+    .hdr.compact .hdr-d .search { transform: translateY(-12px); }
+
+    .page-d {
+      display: block;
+      position: relative;      /* no z-index: its children stack with the header */
+      padding: 69px 0 120px;
+    }
+    .page-d .grad {
+      position: absolute;
+      z-index: 0;
+      left: 0; right: 0; top: 0;
+      height: 569px;
+      background: linear-gradient(to bottom, var(--blue) 79px, rgba(12,115,254,0) 569px);
+    }
+    .d-col { position: relative; z-index: 2; width: min(1200px, 100% - 80px); margin: 0 auto; }
+    .promo-d {
+      display: block;
+      height: 40px;
+      border-radius: 24px;
+      background: #d6c5fe url(assets/promo-d-content@2x.png) center / 510px 40px no-repeat;
+    }
+    .card-d {
+      margin-top: 8px;
+      padding: 40px 0;
+      border-radius: 24px;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .card-d img { display: block; }
+    .card-d .infobar  { width: 390px; height: 24px; }
+    .card-d .title    { width: 584px; height: auto; margin: 33px 0 9px; }     /* 664×204 text box */
+    .card-d .subtitle { width: 507px; height: auto; margin: 27px 0 3px; }     /* 664×62 text box */
+    .card-d .photo    { width: min(1008px, 100% - 192px); height: auto; margin-top: 24px; border-radius: 12px; }
+    .card-d p {
+      width: min(664px, 100% - 192px);
+      margin: 24px 0 0;
+      font: 400 17px/25px Inter, system-ui, sans-serif;
+      color: #0c131d;
+    }
+  }
+
+  /* ================= Demalys (aviasales.kz) variant =================
+     body.kz: KZ header (logo + KZ/RU switcher), no promo banner, page content unchanged.
+     Mobile: no room for the snowman next to the switcher → snow only.
+     Desktop: snowman sits left of the switcher. Compact behaviour as on aviasales.kz. */
+  .hdr-kz-m, .hdr-kz-d { display: none; }
+  .hdr-kz-m img, .hdr-kz-d img {
+    position: absolute; display: block;
+    transform-origin: 0 0;
+    transition: transform var(--t-logo) var(--ease-site), opacity var(--t-bar) var(--ease-site);
+    -webkit-user-drag: none;
+  }
+  .kz .promo-m, .kz .promo-d { display: none; }
+  .kz .screen .content { margin-top: 52px; }        /* card right under the header, no banner */
+
+  /* mobile */
+  .kz .hdr-logo, .kz .hdr-icon { display: none; }
+  .kz .snowman-clip { display: none; }
+  .kz .hdr-kz-m { display: block; }
+  .hdr-kz-m .logo   { left: 16px;  top: 10px; width: 84px; height: 32px; }
+  .hdr-kz-m .lang   { left: 139px; top: 10px; width: 124px; height: 32px; }
+  .hdr-kz-m .search { left: 275px; top: 8px;  width: 36px; height: 36px; }
+  .hdr-kz-m .menu   { left: 323px; top: 8px;  width: 36px; height: 36px; }
+  /* compact, as on the site: logo 63×24, switcher hidden, «Содержание» centred, buttons at 295 / 331 */
+  .kz .hdr.compact .hdr-kz-m .logo   { transform: translateY(-2px) scale(.75); }
+  .kz .hdr.compact .hdr-kz-m .lang   { opacity: 0; transform: translateY(-6px); }
+  .kz .hdr.compact .hdr-kz-m .search { transform: translate(20px, -6px); }
+  .kz .hdr.compact .hdr-kz-m .menu   { transform: translate(8px, -6px); }
+
+  /* prototype-only toggle: ПСЖР / Демалыс */
+  .proto-switch {
+    position: fixed;
+    z-index: 100;
+    right: 12px; bottom: 12px;
+    display: flex;
+    padding: 3px;
+    border-radius: 12px;
+    background: rgba(12, 19, 29, .82);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .2);
+    font: 600 13px/17px Inter, system-ui, sans-serif;
+  }
+  .proto-switch button {
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 9px;
+    background: none;
+    color: rgba(255, 255, 255, .7);
+    font: inherit;
+    cursor: pointer;
+  }
+  .proto-switch button[aria-pressed="true"] { background: #fff; color: #0c131d; }
+
+  @media (min-width: 1024px) {
+    .kz .hdr-d, .kz .hdr-kz-m, .kz .promo-d { display: none; }
+    .kz .hdr-kz-d {
+      display: block;
+      position: absolute;
+      top: 0; left: 50%;
+      width: min(1280px, 100%);
+      height: 64px;
+      transform: translateX(-50%);
+    }
+    .hdr-kz-d .logo   { left: 44px;  top: 10px; width: 117.5px; height: 44px; }
+    .hdr-kz-d .nav    { left: 50%;   top: 12.5px; width: 657px; height: 40px; transform: translateX(-50%); }
+    .hdr-kz-d .lang   { right: 92px; top: 16px; width: 124px; height: 32px; }
+    .hdr-kz-d .search { right: 44px; top: 14px; width: 36px; height: 36px; }
+    /* compact 44px bar: logo 80×30, everything re-centred */
+    .kz .hdr.compact .hdr-kz-d .logo   { transform: translateY(-3px) scale(.684); }
+    .kz .hdr.compact .hdr-kz-d .nav    { transform: translate(-50%, -10px); }
+    .kz .hdr.compact .hdr-kz-d .lang   { transform: translateY(-10px); }
+    .kz .hdr.compact .hdr-kz-d .search { transform: translateY(-10px); }
+
+    .kz .hdr-bg { height: 64px; }
+    .kz .hdr.compact .hdr-bg { transform: scaleY(calc(44 / 64)); }
+    .kz .anim, .kz .snowman-clip { clip-path: inset(0 0 66px 0); }            /* 130 − 64 */
+    .kz .hdr.compact .anim, .kz .hdr.compact .snowman-clip { clip-path: inset(0 0 86px 0); }
+    .kz .snowman-clip { display: block; }
+
+    /* snowman exactly centred between the last rubric (ends at x 969) and the KZ/RU switcher (starts at x 1064):
+       centre 1016.5 → 56.6px wide box spans 988.2–1044.8, i.e. 19.2px gap on each side */
+    /* (computed from the rendered positions: rubrics are centred in the column, switcher sits 92px from its right edge) */
+    .kz .snowman { right: calc((100% - min(1280px, 100%)) / 2 + min(1280px, 100%) * .25 - 84.55px); }
+    .kz .snowman-wrap { transform-origin: calc(100% - (100% - min(1280px, 100%)) / 2 - min(1280px, 100%) * .25 + 55.71px) 76.26px; }
+
+    .kz .page-d { padding-top: 64px; }           /* card 8px under the 64px header */
+  }
+</style>
+</head>
+<body>
+  <header class="hdr">
+    <div class="hdr-bg"></div>
+
+    <div class="anim">
+      <canvas class="snow" aria-hidden="true"></canvas>
+      <div class="fireworks" aria-hidden="true"></div>
+    </div>
+
+    <!-- snowman lives outside the clipped layer: a plain overflow box keeps him above the card -->
+    <div class="snowman-clip">
+      <div class="snowman-wrap">
+        <button class="snowman" type="button" aria-label="Снеговик: запустить салют">
+          <svg width="47.84" height="53.36" viewBox="0 0 52 58" aria-hidden="true">
+            <defs>
+              <clipPath id="scarf-band"><rect x="11" y="18.5" width="31" height="8.9"/></clipPath>
+              <clipPath id="scarf-tail"><rect x="31.2" y="26.3" width="9.3" height="14.3"/></clipPath>
+              <path id="scarf-shape" d="M12.9224 19.5183C19.2125 18.8503 25.6 18.757 39.9335 20.6682C39.9335 20.6682 41.1297 22.4077 41.31 23.6928C41.5082 25.1051 40.6647 27.2871 40.6647 27.2871C39.9954 27.064 38.911 26.8559 37.3074 26.6978L39.9335 38.6636L33.9635 40.4198L31.6645 26.5097C25.3753 26.1278 17.0778 25.6068 12.0326 25.6068C12.0326 25.6068 11.4322 23.5398 11.6682 22.2377C11.8768 21.0869 12.9224 19.5183 12.9224 19.5183Z" fill="#FA742D"/>
+            </defs>
+            <!-- layer order as in Figma: right arm, head, body, scarf, left arm, buttons -->
+            <g class="arm-right"><path d="M39 33.0872L50.0971 21.728L51.1456 22.4509L47.8475 26.7209L51.6699 27.5824L51.1456 28.8057L46.5916 28.4073L40.5728 34.5727L39 33.0872Z" fill="#000"/></g>
+            <g>
+<path d="M17.8398 5.36652C18.287 3.79363 18.6786 1.54394 20.7773 0.861636C23.4007 0.0087542 37.2618 2.23747 39.0876 4.82802C40.5482 6.90046 39.9224 8.94448 39.8396 9.94056C39.7567 10.9366 39.2516 14.3406 39.2516 14.3406L38.8374 18.2626C38.4732 20.0481 36.8987 23.5907 33.5143 23.4773C30.13 23.364 21.3695 21.4853 17.4123 20.5601C16.3482 19.8169 14.4868 17.5303 15.5534 14.3295C15.5534 14.3295 17.1678 8.27873 17.8398 5.36652Z" fill-rule="evenodd" fill="#0C73FE"/>
+<g>
+<path d="M17.7607 6.04335C17.8918 4.60041 18.6786 1.54394 20.7773 0.861636C23.4007 0.0087542 37.2618 2.23747 39.0876 4.82802C40.5482 6.90046 40.192 9.13121 39.8314 9.98753C38.7637 9.72892 36.4645 9.68176 35.8088 11.562C34.9892 13.9123 34.4211 17.4978 36.4325 18.0442C38.0416 18.4813 38.7062 18.3719 38.8374 18.2626C38.4732 20.0481 36.8987 23.5907 33.5143 23.4773C30.13 23.364 21.3695 21.4853 17.4123 20.5601C16.3482 19.8169 14.4868 17.5303 15.5534 14.3295C16.4644 14.978 18.5727 15.5251 19.718 12.5254C21.1497 8.77586 19.2037 6.17439 17.7607 6.04335ZM21.5762 10.7544C22.564 6.28558 24.9024 5.2775 25.9482 5.33206C26.8628 5.49595 29.2867 5.95047 31.6654 6.45746C34.6388 7.09121 33.9727 15.7598 32.0272 18.4928C30.0817 21.2258 24.288 19.6085 22.7794 18.8653C21.2708 18.1221 20.3415 16.3404 21.5762 10.7544Z" fill-rule="evenodd" fill="white"/>
+<path d="M27.0524 6.52347C25.9228 6.50171 23.4954 7.24308 22.8223 10.3826C21.981 14.307 21.5112 16.8103 23.7303 17.7393C25.9494 18.6683 29.9284 18.9084 31.3165 16.9734C32.7046 15.0384 32.9554 8.27194 30.9659 7.48507C29.3742 6.85557 27.6937 6.58171 27.0524 6.52347ZM24.0139 10.6121C24.7832 8.54816 26.28 7.90817 26.9323 7.84617C27.1727 7.86801 28.032 8.01879 29.5449 8.44715C31.4361 8.98261 31.3818 13.5847 30.2451 15.4213C29.1084 17.2578 26.3319 17.1269 24.7031 16.3728C23.0742 15.6187 23.0521 13.1919 24.0139 10.6121Z" fill-rule="evenodd" fill="white"/>
+<path d="M25.0313 12.5254C24.6768 12.695 24.1464 13.3258 24.8608 14.4917C25.7537 15.9492 26.791 15.7428 26.9616 15.454C27.0285 15.3409 26.8072 15.2004 26.518 15.0167C26.069 14.7316 25.4562 14.3424 25.5041 13.7904C25.5828 12.8829 25.609 12.5804 25.0313 12.5254Z" fill="white"/>
+</g>
+</g>
+            <path d="M38.1845 25.0969C46.0835 30.6193 46.2233 43.2717 45.0874 47.728C45.0874 47.728 43.5 57.228 26 57.228C8.5 57.228 6.37861 47.728 6.37861 47.728C2.70871 34.2717 11.4466 24.9513 15.1165 23.6115L38.1845 25.0969Z" fill="#fff"/>
+            <use href="#scarf-shape" clip-path="url(#scarf-band)"/>
+            <g class="scarf-tail"><use href="#scarf-shape" clip-path="url(#scarf-tail)"/></g>
+            <g class="arm-left"><path d="M12.6699 33.6601L1.57282 22.3008L0.283479 23.0247L3.69111 27.2905L0 28.1552L0.524272 29.3785L4.75126 29.007L11.0971 35.1455L12.6699 33.6601Z" fill="#000"/></g>
+            <path d="M27.7098 30.4274C27.7098 31.5375 27.0801 32.4374 25.97 32.4374C24.8599 32.4374 23.96 31.5375 23.96 30.4274C23.96 29.3173 24.8599 28.7232 25.97 28.7232C27.0801 28.7232 27.7098 29.3173 27.7098 30.4274Z" fill="#000"/>
+            <path d="M27.2628 38.8453C27.2628 39.9554 26.8919 40.4198 25.7818 40.4198C24.6717 40.4198 23.835 40.3911 23.835 39.281C23.835 38.1709 24.4128 37.1411 25.5229 37.1411C26.633 37.1411 27.2628 37.7352 27.2628 38.8453Z" fill="#000"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <img class="hdr-logo" src="assets/logo@3x.png" alt="ПСЖР от Авиасейлс">
+    <div class="hdr-toc" aria-hidden="true">
+      Содержание
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3.5 6 8 10.5 12.5 6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <img class="hdr-icon search" src="assets/icon-search@3x.png" alt="Поиск">
+    <img class="hdr-icon menu"   src="assets/icon-menu@3x.png"   alt="Меню">
+
+    <!-- desktop header (logo, rubrics, search) -->
+    <!-- Demalys (aviasales.kz) headers -->
+    <div class="hdr-kz-m">
+      <img class="logo"   src="assets/kz-m-logo@3x.png"   alt="demalys · aviasales.kz">
+      <img class="lang"   src="assets/kz-m-lang@3x.png"   alt="KZ / RU">
+      <img class="search" src="assets/kz-m-search@3x.png" alt="Поиск">
+      <img class="menu"   src="assets/kz-m-menu@3x.png"   alt="Меню">
+    </div>
+    <div class="hdr-kz-d">
+      <img class="logo"   src="assets/kz-d-logo@2x.png"   alt="demalys · aviasales.kz">
+      <img class="nav"    src="assets/kz-d-nav@2x.png"    alt="Путеводители, Опыт, Подборки, Инструкции, Лайфхаки">
+      <img class="lang"   src="assets/kz-d-lang@2x.png"   alt="KZ / RU">
+      <img class="search" src="assets/kz-d-search@2x.png" alt="Поиск">
+    </div>
+
+    <div class="hdr-d">
+      <img class="logo"   src="assets/d-logo@2x.png"   alt="ПСЖР от Авиасейлс">
+      <img class="nav"    src="assets/d-nav@2x.png"    alt="Путеводители, Опыт, Подборки, Инструкции, Лайфхаки">
+      <img class="search" src="assets/d-search@2x.png" alt="Поиск">
+    </div>
+  </header>
+
+  <main class="screen">
+    <div class="gradient"></div>
+    <a class="promo-m" href="#" aria-label="Куда сгонять на пару дней? Есть варианты — Читать"></a>
+    <img class="content" src="assets/article@2x.webp" width="375" height="955" alt="Как можно сэкономить на перелётах: сложный маршрут и частичное использование билета">
+    <!-- the article continues as live text so the page can be scrolled past the header block -->
+    <div class="content-more">
+      <p>Если хочется отправиться в отпуск, но денег не так много, не обязательно ждать распродаж у авиакомпаний. Отыскать выгодные билеты можно и самостоятельно.</p>
+      <p>Если хочется отправиться в отпуск, но денег не так много, не обязательно ждать распродаж у авиакомпаний. Отыскать выгодные билеты можно и самостоятельно.</p>
+      <p>Если хочется отправиться в отпуск, но денег не так много, не обязательно ждать распродаж у авиакомпаний. Отыскать выгодные билеты можно и самостоятельно.</p>
+      <p>Если хочется отправиться в отпуск, но денег не так много, не обязательно ждать распродаж у авиакомпаний. Отыскать выгодные билеты можно и самостоятельно.</p>
+      <p>Если хочется отправиться в отпуск, но денег не так много, не обязательно ждать распродаж у авиакомпаний. Отыскать выгодные билеты можно и самостоятельно.</p>
+      <p>Если хочется отправиться в отпуск, но денег не так много, не обязательно ждать распродаж у авиакомпаний. Отыскать выгодные билеты можно и самостоятельно.</p>
+      <p>Если хочется отправиться в отпуск, но денег не так много, не обязательно ждать распродаж у авиакомпаний. Отыскать выгодные билеты можно и самостоятельно.</p>
+    </div>
+  </main>
+
+  <main class="page-d">
+    <div class="grad"></div>
+    <div class="d-col">
+      <a class="promo-d" href="#" aria-label="Куда сгонять на пару дней? Есть варианты — Читать"></a>
+      <article class="card-d">
+        <img class="infobar"  src="assets/d-infobar@2x.png"  width="390" height="24" alt="4 апр 2025 · Путеводители / Едем на выходные">
+        <img class="title"    src="assets/d-title@2x.png"    width="584" height="185" alt="Как можно сэкономить на перелётах: сложный маршрут и частичное использование билета">
+        <img class="subtitle" src="assets/d-subtitle@2x.png" width="507" height="56"  alt="Разбираем лайфхаки для продвинутых путешественников">
+        <img class="photo"    src="assets/d-photo@2x.webp"   width="1008" height="617" alt="">
+        <p>Во второй половине весны и летом в Сочи хорошо, но дороговато. Однако даже в разгар сезона в этом городе можно как следует повеселиться и не потратить на развлечения ни копейки. Как? Делимся несколькими лайфхаками и рассказываем про бесплатные варианты досуга и места, за отдых в которых не придётся платить.</p>
+        <p>Во второй половине весны и летом в Сочи хорошо, но дороговато. Однако даже в разгар сезона в этом городе можно как следует повеселиться и не потратить на развлечения ни копейки. Как? Делимся несколькими лайфхаками и рассказываем про бесплатные варианты досуга и места, за отдых в которых не придётся платить.</p>
+        <p>Во второй половине весны и летом в Сочи хорошо, но дороговато. Однако даже в разгар сезона в этом городе можно как следует повеселиться и не потратить на развлечения ни копейки. Как? Делимся несколькими лайфхаками и рассказываем про бесплатные варианты досуга и места, за отдых в которых не придётся платить.</p>
+        <p>Во второй половине весны и летом в Сочи хорошо, но дороговато. Однако даже в разгар сезона в этом городе можно как следует повеселиться и не потратить на развлечения ни копейки. Как? Делимся несколькими лайфхаками и рассказываем про бесплатные варианты досуга и места, за отдых в которых не придётся платить.</p>
+        <p>Во второй половине весны и летом в Сочи хорошо, но дороговато. Однако даже в разгар сезона в этом городе можно как следует повеселиться и не потратить на развлечения ни копейки. Как? Делимся несколькими лайфхаками и рассказываем про бесплатные варианты досуга и места, за отдых в которых не придётся платить.</p>
+        <p>Во второй половине весны и летом в Сочи хорошо, но дороговато. Однако даже в разгар сезона в этом городе можно как следует повеселиться и не потратить на развлечения ни копейки. Как? Делимся несколькими лайфхаками и рассказываем про бесплатные варианты досуга и места, за отдых в которых не придётся платить.</p>
+        <p>Во второй половине весны и летом в Сочи хорошо, но дороговато. Однако даже в разгар сезона в этом городе можно как следует повеселиться и не потратить на развлечения ни копейки. Как? Делимся несколькими лайфхаками и рассказываем про бесплатные варианты досуга и места, за отдых в которых не придётся платить.</p>
+      </article>
+    </div>
+  </main>
+
+<div class="proto-switch" role="group" aria-label="Версия сайта">
+  <button type="button" data-site="psgr" aria-pressed="true">ПСЖР</button>
+  <button type="button" data-site="kz" aria-pressed="false">Демалыс</button>
+</div>
+
+<script>
+(() => {
+  const SALUTE = 2000;   // ms — snowman and fireworks share this exact window
+  const reduceMQ = matchMedia('(prefers-reduced-motion: reduce)');
+
+  /* =========================================================
+     Snowman: soft bounce, side-to-side sway, waving arms
+     ========================================================= */
+  const man  = document.querySelector('.snowman');
+  const armL = man.querySelector('.arm-left');
+  const armR = man.querySelector('.arm-right');
+  const scarf = man.querySelector('.scarf-tail');
+
+  // scarf tail: follows the body's rocking with a little lag and in the opposite
+  // direction (inertia), gets a kick from the squash, and settles at the end
+  const SCARF = [
+    { transform: 'rotate(0deg)',     offset: 0,    easing: 'ease-out' },
+    { transform: 'rotate(9deg)',     offset: 0.07, easing: 'ease-in-out' },
+    { transform: 'rotate(11deg)',    offset: 0.20, easing: 'ease-in-out' },
+    { transform: 'rotate(-11deg)',   offset: 0.42, easing: 'ease-in-out' },
+    { transform: 'rotate(11deg)',    offset: 0.64, easing: 'ease-in-out' },
+    { transform: 'rotate(-9deg)',    offset: 0.86, easing: 'ease-in-out' },
+    { transform: 'rotate(3deg)',     offset: 0.94, easing: 'ease-in-out' },
+    { transform: 'rotate(0deg)',     offset: 1 },
+  ];
+  let running = [];
+
+  const bounce = [
+    { transform: 'scale(1, 1)' },
+    { transform: 'scale(1.045, 0.94)', offset: 0.18, easing: 'cubic-bezier(.3,0,.2,1)' },
+    { transform: 'scale(0.975, 1.03)', offset: 0.45, easing: 'ease-in-out' },
+    { transform: 'scale(1.01, 0.99)',  offset: 0.72, easing: 'ease-in-out' },
+    { transform: 'scale(1, 1)' },
+  ];
+
+  // gentle rocking from the base while he waves (uses the separate `rotate` property,
+  // so it stacks with the bounce transform)
+  const sway = [
+    { rotate: '0deg',  offset: 0,    easing: 'ease-in-out' },
+    { rotate: '-3deg', offset: 0.14, easing: 'ease-in-out' },
+    { rotate: '3deg',  offset: 0.36, easing: 'ease-in-out' },
+    { rotate: '-3deg', offset: 0.58, easing: 'ease-in-out' },
+    { rotate: '2.5deg',offset: 0.80, easing: 'ease-in-out' },
+    { rotate: '0deg',  offset: 1 },
+  ];
+
+  // arms: lifted only a little (no strong distortion), wave the whole salute, then return
+  function armFrames(dir) {             // +1 left arm (clockwise = up), -1 right arm
+    const up = 24, low = 10;            // degrees
+    const f = [{ transform: 'rotate(0deg)', offset: 0, easing: 'cubic-bezier(.2,.8,.3,1)' }];
+    f.push({ transform: `rotate(${dir * up}deg)`, offset: 0.1, easing: 'ease-in-out' });
+    const waves = 8;
+    for (let i = 1; i <= waves; i++) {
+      const a = i % 2 ? low : up;
+      f.push({ transform: `rotate(${dir * a}deg)`, offset: 0.1 + i * (0.76 / waves), easing: 'ease-in-out' });
+    }
+    f.push({ transform: 'rotate(0deg)', offset: 1 });
+    return f;
+  }
+  const ARM_L = armFrames(+1), ARM_R = armFrames(-1);   // built once, reused on every click
+
+  /* =========================================================
+     Fireworks: CSS-animated sparks, placed by JS
+     ========================================================= */
+  const stage = document.querySelector('.fireworks');
+  const PALETTES = [
+    ['#ffd54a', '#ffc21f', '#ffe58a', '#fff3c4'],     // gold (as in the reference)
+    ['#ffe27a', '#ffb627', '#fff0b8', '#ffd0a0'],     // warm gold
+    ['#fff6d6', '#ffe9a0', '#ffd96a', '#ffffff'],     // white-gold
+  ];
+  const rand = (a, b) => a + Math.random() * (b - a);
+
+  // build every element of a burst off-DOM, then insert it with a single append
+  function burstNode(x, y, r, palette, life) {
+    const b = document.createElement('div');
+    b.className = 'burst';
+    b.style.cssText = `left:${x}px;top:${y}px;--life:${life + 150}ms;--sag:${(r * 0.22).toFixed(1)}px;--r:${r}px`;
+    const frag = document.createDocumentFragment();
+    const flash = document.createElement('div');
+    flash.className = 'flash';
+    frag.appendChild(flash);
+    const colors = PALETTES[palette];
+    const rings = [
+      { n: Math.round(r * 1.15), d: r,         len: [5, 9],   w: 1.6 },   // outer ring
+      { n: Math.round(r * 0.55), d: r * 0.55,  len: [2.5, 4], w: 1.3 },   // inner ring
+    ];
+    rings.forEach((ring, ri) => {
+      const off = Math.random() * 360;
+      for (let i = 0; i < ring.n; i++) {
+        const sp = document.createElement('div');
+        sp.className = Math.random() < 0.35 ? 'spark glitter' : 'spark';
+        sp.style.cssText =
+          `--a:${(off + (360 / ring.n) * i + rand(-6, 6)).toFixed(1)}deg;` +
+          `--d:${(ring.d * rand(0.62, 1.12)).toFixed(1)}px;` +
+          `--len:${rand(...ring.len).toFixed(1)}px;` +
+          `--w:${ring.w}px;` +
+          `--c:${colors[(i + ri) % colors.length]};` +
+          `--life:${Math.round(life * rand(0.72, 1))}ms;` +
+          `--delay:${Math.round((ri ? 40 : 0) + rand(0, 35))}ms`;
+        frag.appendChild(sp);
+      }
+    });
+    b.appendChild(frag);
+    return b;
+  }
+
+  // x, y: burst centre; r: radius; at: start ms; rocket: draw the climbing trail
+  function burst({ x, y, r, at, rocket = true, palette = 0, life = 900 }, timers) {
+    const rocketDur = rocket ? 240 : 0;
+    if (rocket) {
+      timers.push(setTimeout(() => {
+        const rk = document.createElement('div');
+        rk.className = 'rocket';
+        rk.style.cssText = `left:${x}px;top:${y - 6}px;--rise:${stage.clientHeight * 0.66 - y}px;--dur:${rocketDur}ms`;
+        stage.appendChild(rk);
+        timers.push(setTimeout(() => rk.remove(), rocketDur + 20));
+      }, at));
+    }
+    // build the burst ahead of time (during the rocket), insert on cue
+    timers.push(setTimeout(() => {
+      const b = burstNode(x, y, r, palette, life);
+      stage.appendChild(b);
+      timers.push(setTimeout(() => b.remove(), life + 220));
+    }, at + rocketDur));
+  }
+
+  // everything finishes within 2 s
+  const SHOW = [
+    // only behind the snowman (Figma positions); last spark fades out right at 1500 ms
+    // timings = the 1.5 s version stretched × 4/3 to fill 2 s
+    // x, y, r are in the snowman's own SVG units (52×58 art) → scaled to his on-screen size
+    { x: 3.2,  y: 20.45, r: 26.1, at: 0,    palette: 0, life: 1200 },                 // rocket 0–240, burst 240–1515
+    { x: 41.24, y: 3.05, r: 20.65, at: 320,  palette: 1, life: 1150 },                // rocket 320–560, burst 560–1785
+    { x: 43.41, y: 35.66, r: 22.8, at: 1095, palette: 2, life: 800, rocket: false },  // burst 1095–1970
+  ];
+  let timers = [];
+
+  function stopSalute() {
+    running.forEach(a => a.cancel());
+    running = [];
+    timers.forEach(clearTimeout);
+    timers = [];
+    stage.replaceChildren();
+  }
+
+  man.addEventListener('click', () => {
+    stopSalute();
+    const reduce = reduceMQ.matches;
+    running = [
+      man.animate(bounce, { duration: reduce ? 300 : 600, composite: 'replace' }),
+      armL.animate(ARM_L, { duration: SALUTE }),
+      armR.animate(ARM_R, { duration: SALUTE }),
+      scarf.animate(SCARF, { duration: SALUTE }),
+    ];
+    if (!reduce) running.push(man.animate(sway, { duration: SALUTE }));
+    timers = [];
+    const sv = man.querySelector('svg').getBoundingClientRect();
+    const st = stage.getBoundingClientRect();
+    const k = sv.width / 52;
+    SHOW.forEach(o => burst({ ...o,
+      x: sv.left - st.left + o.x * k,
+      y: sv.top  - st.top  + o.y * k,
+      r: Math.round(o.r * k) }, timers));
+    timers.push(setTimeout(() => stage.replaceChildren(), SALUTE));   // hard stop together with the snowman
+  });
+
+  /* =========================================================
+     Snow: seamless 5 s loop, all behind the snowman
+     far  — small, faint, slow
+     mid  — Figma-like ~40%
+     near — larger, faster
+     Perf: one canvas; all flakes pre-rendered into a single sprite atlas;
+     bottom fade done in-canvas; loop pauses when off-screen or tab hidden;
+     resize only rebuilds when the size really changes.
+     ========================================================= */
+  // 10 s loop: flakes fall 20% slower than before (1.6× the distance in 2× the time),
+  // while swaying/twirling keeps its old pace (two cycles per loop) — still seamless
+  const LOOP = 10;
+  const FADE_FROM = 50, FADE_TO = 90;          // same as the former CSS mask
+  const canvas = document.querySelector('.snow');
+  const ctx = canvas.getContext('2d');
+  let W = 0, H = 0, dpr = 1, flakes = [], atlas = null, fade = null;
+
+  let seed = 20260;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+  const LAYERS = [
+    //       share  radius      alpha         speed-depth   chance of a shaped flake
+    { name: 'far',  share: 0.40, r: [0.9, 1.6], a: [0.20, 0.34], depth: [0.0, 0.3], shaped: 0 },
+    { name: 'mid',  share: 0.42, r: [1.8, 3.0], a: [0.24, 0.60], depth: [0.3, 0.7], shaped: 0.5 },
+    { name: 'near', share: 0.18, r: [3.6, 5.2], a: [0.36, 0.60], depth: [0.7, 1.0], shaped: 0.75 },
+  ];
+  // the three snowflakes from Figma (L / M / S), white, drawn into the atlas once
+  const FLAKE_SRC = { s: 'assets/flake-s.svg', m: 'assets/flake-m.svg', l: 'assets/flake-l.svg' }  // = snow-*.svg, minified;
+  const FLAKE_W   = { s: [7, 9], m: [11, 14], l: [15, 19] };   // on-screen width, px
+  // which flake each depth layer uses
+  const MIX = { mid: [['s', 0.65], ['m', 1]], near: [['m', 0.4], ['l', 1]] };
+  const flakeImg = {};
+  const flakesReady = Promise.all(Object.entries(FLAKE_SRC).map(([k, src]) => new Promise(res => {
+    const im = new Image();
+    im.decoding = 'sync';
+    // wait until the SVG is fully decoded (Safari draws an undecoded SVG as nothing)
+    im.onload = () => (im.decode ? im.decode().catch(() => {}) : Promise.resolve()).then(res);
+    im.onerror = () => res();
+    im.src = src;
+    flakeImg[k] = im;
+  })));
+  // separate random stream for flake type/size/tilt, so positions/speeds stay exactly as before
+  let seed2 = 777;
+  const rnd2 = () => (seed2 = (seed2 * 16807) % 2147483647) / 2147483647;
+
+  function paintFlake(g, ox, oy, f) {
+    const im = flakeImg[f.kind];
+    if (!im || !im.naturalWidth) return;            // file missing → skip, never break the snow
+    const ar = (im.naturalHeight || 1) / (im.naturalWidth || 1);
+    const w = f.w, h = f.w * ar;
+    g.drawImage(im, ox + (f.size - w) / 2, oy + (f.size - h) / 2, w, h);
+  }
+
+  function build() {
+    seed = 20260;
+    seed2 = 777;
+    const total = Math.round(W / 375 * 46);
+    flakes = [];
+    for (const L of LAYERS) {
+      const n = Math.round(total * L.share);
+      for (let i = 0; i < n; i++) {
+        const depth = L.depth[0] + rnd() * (L.depth[1] - L.depth[0]);
+        const r = (L.r[0] + rnd() * (L.r[1] - L.r[0])) * 1.1;   // all flakes +10%
+        const size = Math.ceil((r + 1) * 2);
+        const f = {
+          x: rnd() * W,
+          y: rnd(),
+          r, size, half: size / 2,
+          // px per loop: ~20…36 px/s (10% slower than before), near = faster;
+          // never shorter than the visible strip, so a flake always leaves the fade before it wraps
+          travel: Math.max((Math.max(H + 20, 107) + depth * 90) * 0.81, H + size + 6),  // 0.9 × 0.9: two −10% steps
+          alpha: L.a[0] + rnd() * (L.a[1] - L.a[0]),
+          swayA: (3 + rnd() * 8) * (0.6 + depth * 0.7),
+          spinA: (1.2 + rnd() * 2.2) * (0.6 + depth * 0.7),
+          spinK: 1 + Math.floor(rnd() * 2),
+          ph1: rnd() * Math.PI * 2,
+          ph2: rnd() * Math.PI * 2,
+        };
+        rnd();                                         // keep the random sequence identical to before
+        // flake type from Figma (S / M / L) and its size
+        if (L.name !== 'far') {
+          const t = rnd2();
+          f.kind = MIX[L.name].find(([, p]) => t < p)[0];
+          const [w0, w1] = FLAKE_W[f.kind];
+          f.w = w0 + rnd2() * (w1 - w0);
+          f.size = Math.ceil(f.w * 1.1) + 2;  f.half = f.size / 2;
+          f.travel = Math.max(f.travel, H + f.size + 6);
+          f.travel *= 1.6;                              // −20% fall speed (see LOOP)
+          // gentle twirl: swings back and forth, returns exactly at the loop end → seamless
+          f.rot0  = rnd2() * Math.PI * 2;
+          f.spin  = (0.35 + rnd2() * 0.4) * (rnd2() < 0.5 ? -1 : 1);   // amplitude, rad (~20–43°)
+          f.spinP = rnd2() * Math.PI * 2;
+        }
+        // the smallest 'far' layer is switched off; its random draws above are still made,
+        // so every remaining flake keeps exactly the same position, size and opacity
+        if (L.name !== 'far') flakes.push(f);
+      }
+    }
+    // pack every flake into one atlas row → every frame blits from a single texture
+    const cell = Math.max(...flakes.map(f => f.size));
+    atlas = document.createElement('canvas');
+    atlas.width = Math.ceil(cell * flakes.length * dpr);
+    atlas.height = Math.ceil(cell * dpr);
+    const g = atlas.getContext('2d');
+    g.scale(dpr, dpr);
+    flakes.forEach((f, i) => {
+      paintFlake(g, i * cell, 0, f);
+      f.sx = i * cell * dpr; f.sw = f.size * dpr;
+    });
+    // bottom fade as a reusable gradient
+    fade = ctx.createLinearGradient(0, 0, 0, H);
+    const cs = getComputedStyle(canvas);
+    const fFrom = parseFloat(cs.getPropertyValue('--fade-from')) || FADE_FROM;
+    const fTo   = parseFloat(cs.getPropertyValue('--fade-to'))   || FADE_TO;
+    fade.addColorStop(Math.min(fFrom / H, 1), 'rgba(0,0,0,1)');
+    fade.addColorStop(Math.min(fTo / H, 1), 'rgba(0,0,0,0)');
+  }
+
+  function resize() {
+    if (!ready) return false;
+    const rect = canvas.getBoundingClientRect();
+    const nd = Math.min(window.devicePixelRatio || 1, 3);
+    if (rect.width === W && rect.height === H && nd === dpr && atlas) return false;
+    dpr = nd; W = rect.width; H = rect.height;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    build();
+    return true;
+  }
+
+  const TAU = Math.PI * 2;
+  function draw(t) {
+    const p = (t % LOOP) / LOOP;
+    const sway = TAU * p * 2;                      // 2 sway cycles per 10 s loop = 1 per 5 s, as before
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.clearRect(0, 0, W, H);
+    for (let i = 0; i < flakes.length; i++) {
+      const f = flakes[i];
+      let y = ((f.y + p) % 1) * f.travel - f.half - 6;
+      if (y > H + f.half) continue;
+      const a2 = sway * f.spinK + f.ph2;
+      const s2 = Math.sin(a2);
+      let x = f.x + Math.sin(sway + f.ph1) * f.swayA + Math.cos(a2) * f.spinA;
+      y += s2 * f.spinA * 0.6;
+      x = ((x % W) + W) % W;
+      ctx.globalAlpha = f.alpha;
+      {
+        const a = f.rot0 + f.spin * Math.sin(sway + f.spinP), c = Math.cos(a) * dpr, sn = Math.sin(a) * dpr;
+        ctx.setTransform(c, sn, -sn, c, x * dpr, y * dpr);
+        ctx.drawImage(atlas, f.sx, 0, f.sw, f.sw, -f.half, -f.half, f.size, f.size);
+      }
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // fade the bottom edge (identical to the old mask-image)
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  // animation clock that only advances while the snow is actually running
+  let raf = 0, last = null, clock = 0, visible = true;
+  function frame(now) {
+    if (last !== null) clock += Math.min(now - last, 100);   // no jump after a stall
+    last = now;
+    draw(clock / 1000);
+    raf = requestAnimationFrame(frame);
+  }
+  function stop() { cancelAnimationFrame(raf); raf = 0; last = null; }
+  function run() {
+    stop();
+    if (!ready) return;
+    if (reduceMQ.matches) { draw(1.3); return; }
+    if (visible && !document.hidden) raf = requestAnimationFrame(frame);
+  }
+
+  // start once the three flake SVGs are decoded
+  let ready = false;
+  flakesReady.then(() => { ready = true; resize(); run(); });
+
+  // pause while scrolled out of view
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(([e]) => { visible = e.isIntersecting; run(); }).observe(canvas);
+  }
+  document.addEventListener('visibilitychange', run);
+
+  // resize: once per frame at most, and only when the canvas size changes
+  let resizeQueued = false;
+  window.addEventListener('resize', () => {
+    if (resizeQueued) return;
+    resizeQueued = true;
+    requestAnimationFrame(() => {
+      resizeQueued = false;
+      if (resize() && !raf) draw(reduceMQ.matches ? 1.3 : clock / 1000);
+    });
+  }, { passive: true });
+  reduceMQ.addEventListener?.('change', run);
+
+  /* =========================================================
+     Header: normal ↔ compact on scroll
+     The CSS does the animation; JS only flips one class (with hysteresis)
+     and, near the very top, extends the snow's clip into the two blue
+     corners beside the card's rounded top.
+     ========================================================= */
+  const hdr  = document.querySelector('.hdr');
+  const anim = hdr.querySelector('.anim');
+  const snowClip = hdr.querySelector('.snowman-clip');
+  const desktopMQ = matchMedia('(min-width: 1024px)');
+  let compact = false, settling = 0, ticking = false;
+
+  // per layout: what the page looks like under the header
+  function layout() {
+    const d = desktopMQ.matches;
+    return d
+      ? { bar: document.body.classList.contains('kz') ? 64 : 68, banner: document.querySelector('.promo-d'), br: 24,
+          card: document.querySelector('.card-d'), cr: 24,
+          // like the site: compact once the article's header block (title + photo) is scrolled past
+          waypoint: () => document.querySelector('.card-d .photo').getBoundingClientRect().bottom }
+      : { bar: 52, banner: document.querySelector('.promo-m'), br: 16,
+          card: document.querySelector('.screen .content'), cr: 20,
+          // mobile screenshot: the illustration ends 647px down the 375px-wide article image
+          waypoint: () => { const r = document.querySelector('.screen .content').getBoundingClientRect(); return r.top + 647 * r.width / 375; } };
+  }
+
+  // counter-clockwise rounded rectangle → a hole in a nonzero-filled path
+  function hole(x0, y0, x1, y1, r) {
+    r = Math.min(r, (x1 - x0) / 2, (y1 - y0) / 2);
+    return `M${x0 + r} ${y0}A${r} ${r} 0 0 0 ${x0} ${y0 + r}V${y1 - r}A${r} ${r} 0 0 0 ${x0 + r} ${y1}` +
+           `H${x1 - r}A${r} ${r} 0 0 0 ${x1} ${y1 - r}V${y0 + r}A${r} ${r} 0 0 0 ${x1 - r} ${y0}Z`;
+  }
+
+  // snow + snowman are visible over the header bar, and over the page's blue
+  // gradient around the banner and the card — but never on top of them
+  function pageClip(L) {
+    const box = anim.getBoundingClientRect();
+    const w = box.width, h = box.height;
+    const rel = el => { const r = el.getBoundingClientRect(); return [r.left - box.left, r.top - box.top, r.right - box.left, r.bottom - box.top]; };
+    const [bx0, by0, bx1, by1] = rel(L.banner);
+    const [cx0, cy0, cx1, cy1] = rel(L.card);
+    const bannerHole = bx1 > bx0 ? hole(bx0, by0, bx1, by1, L.br) + ' ' : '';   // no banner on Demalys
+    return `path("M0 0H${w}V${L.bar}H0Z M0 0H${w}V${h}H0Z ` +
+      bannerHole + hole(cx0, cy0, cx1, Math.max(cy1, h + 40), L.cr) + '")';
+  }
+
+  function setClip(v) {
+    for (const el of [anim, snowClip]) {
+      el.style.transition = v ? 'none' : '';
+      el.style.clipPath = v;
+    }
+  }
+
+  function update() {
+    ticking = false;
+    const L = layout();
+    const next = L.waypoint() < 0;
+    if (next !== compact) {
+      compact = next;
+      hdr.classList.toggle('compact', compact);
+      if (compact) stopSalute();
+      clearTimeout(settling);
+      settling = setTimeout(() => { settling = 0; update(); }, 320);   // let the CSS transition finish
+    }
+    if (!compact && !settling) setClip(pageClip(L));
+    else if (anim.style.clipPath) setClip('');
+  }
+  window.addEventListener('scroll', () => {
+    if (!ticking) { ticking = true; requestAnimationFrame(update); }
+  }, { passive: true });
+  desktopMQ.addEventListener?.('change', update);
+  window.addEventListener('resize', () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } });
+  window.addEventListener('load', update);
+
+  /* prototype toggle: ПСЖР ↔ Демалыс (remembered per browser, also via #kz / #psgr) */
+  const sw = document.querySelector('.proto-switch');
+  function setSite(site) {
+    document.body.classList.toggle('kz', site === 'kz');
+    sw.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.site === site)));
+    try { localStorage.setItem('sneg-site', site); } catch (e) {}
+    stopSalute();
+    requestAnimationFrame(update);
+  }
+  sw.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setSite(b.dataset.site); });
+  let initial = location.hash === '#kz' ? 'kz' : location.hash === '#psgr' ? 'psgr' : null;
+  if (!initial) { try { initial = localStorage.getItem('sneg-site'); } catch (e) {} }
+  setSite(initial === 'kz' ? 'kz' : 'psgr');
+  update();
+})();
+</script>
+</body>
+</html>
