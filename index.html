@@ -396,7 +396,7 @@
     .page-d {
       display: block;
       position: relative;      /* no z-index: its children stack with the header */
-      padding: 69px 0 120px;
+      padding: 64px 0 120px;           /* banner (ПСЖР) / card (Демалыс) flush with the 64px header */
     }
     .page-d .grad {
       position: absolute;
@@ -517,7 +517,7 @@
     .kz .snowman { right: calc((100% - min(1280px, 100%)) / 2 + min(1280px, 100%) * .25 - 84.55px); }
     .kz .snowman-wrap { transform-origin: calc(100% - (100% - min(1280px, 100%)) / 2 - min(1280px, 100%) * .25 + 55.71px) 76.26px; }
 
-    .kz .page-d { padding-top: 64px; }           /* card 8px under the 64px header */
+    .kz .card-d { margin-top: 0; }             /* no banner: card right under the header */
   }
 </style>
 </head>
