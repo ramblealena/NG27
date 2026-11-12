@@ -894,8 +894,8 @@
           f.rot0  = rnd2() * Math.PI * 2;
           f.spin  = (0.35 + rnd2() * 0.4) * (rnd2() < 0.5 ? -1 : 1);   // amplitude, rad (~20–43°)
           f.spinP = rnd2() * Math.PI * 2;
-          // desktop: each flake fades out over 18px ending somewhere between 40px and the bottom
-          if (ownFade) { f.fadeEnd = 40 + rnd3() * (H - 42); f.fadeLen = 18; }
+          // desktop: each flake fades out over 18px, gone somewhere between 70px and the bottom
+          if (ownFade) { f.fadeEnd = 70 + rnd3() * (H - 72); f.fadeLen = 18; }
         }
         // the smallest 'far' layer is switched off; its random draws above are still made,
         // so every remaining flake keeps exactly the same position, size and opacity
