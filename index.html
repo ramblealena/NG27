@@ -485,6 +485,34 @@
     cursor: pointer;
   }
   .proto-switch button[aria-pressed="true"] { background: #fff; color: #0c131d; }
+  .proto-switch .sep { width: 1px; margin: 6px 4px; background: rgba(255, 255, 255, .25); }
+  .embed .proto-switch { display: none; }
+
+  /* prototype-only: show the other layout (mobile / desktop) in a frame */
+  .proto-frame {
+    position: fixed;
+    z-index: 90;
+    inset: 0;
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px 0 72px;
+    background: #2b2f36;
+    overflow: auto;
+  }
+  .proto-frame.on { display: flex; }
+  .proto-frame .box { position: relative; flex: none; }
+  .proto-frame iframe {
+    position: absolute;
+    left: 0; top: 0;
+    border: 0;
+    background: #fff;
+    transform-origin: 0 0;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, .35);
+  }
+  .proto-frame.m iframe { border-radius: 28px; }
+  .proto-frame.d iframe { border-radius: 10px; }
+  body.framed { overflow: hidden; }
 
   @media (min-width: 1024px) {
     .kz .hdr-d, .kz .hdr-kz-m, .kz .promo-d { display: none; }
@@ -631,7 +659,15 @@
 <div class="proto-switch" role="group" aria-label="Версия сайта">
   <button type="button" data-site="psgr" aria-pressed="true">ПСЖР</button>
   <button type="button" data-site="kz" aria-pressed="false">Демалыс</button>
+  <span class="sep" aria-hidden="true"></span>
+  <button type="button" data-device="m" aria-pressed="false">Мобилка</button>
+  <button type="button" data-device="d" aria-pressed="false">Комп</button>
 </div>
+<div class="proto-frame" aria-hidden="true"><div class="box"><iframe title="Прототип" loading="lazy"></iframe></div></div>
+<script>
+  // inside the preview frame: hide the prototype controls
+  if (new URLSearchParams(location.search).has('embed')) document.documentElement.classList.add('embed');
+</script>
 
 <script>
 (() => {
@@ -1089,17 +1125,63 @@
 
   /* prototype toggle: ПСЖР ↔ Демалыс (remembered per browser, also via #kz / #psgr) */
   const sw = document.querySelector('.proto-switch');
-  function setSite(site) {
+  const pframe = document.querySelector('.proto-frame');
+  const ifr = pframe.querySelector('iframe');
+  let site = 'psgr', device = null;               // device: null = this window's own layout
+
+  function setSite(next) {
+    site = next;
     document.body.classList.toggle('kz', site === 'kz');
-    sw.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.site === site)));
+    sw.querySelectorAll('[data-site]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.site === site)));
     try { localStorage.setItem('sneg-site', site); } catch (e) {}
     stopSalute();
     requestAnimationFrame(update);
+    if (device) loadFrame();
   }
-  sw.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setSite(b.dataset.site); });
+
+  /* prototype toggle: Мобилка ↔ Комп — the other layout opens in a frame of the right width */
+  const natural = () => (innerWidth >= 1024 ? 'd' : 'm');
+  function loadFrame() {
+    const url = location.pathname + '?embed#' + site;
+    if (ifr.dataset.url !== url) { ifr.dataset.url = url; ifr.src = url; }
+  }
+  function layoutFrame() {
+    if (!device) return;
+    const box = pframe.querySelector('.box');
+    const availW = innerWidth - 32, availH = innerHeight - 96;
+    let w, h, k;
+    if (device === 'm') { w = 375; h = Math.min(812, availH); k = Math.min(1, availW / w); h = h / k; }
+    else { w = 1280; k = Math.min(1, availW / w); h = availH / k; }
+    ifr.style.width = w + 'px'; ifr.style.height = h + 'px';
+    ifr.style.transform = `scale(${k})`;
+    box.style.width = w * k + 'px'; box.style.height = h * k + 'px';
+  }
+  function setDevice(next) {
+    device = next === natural() ? null : next;
+    pframe.classList.toggle('on', !!device);
+    pframe.classList.remove('m', 'd');
+    if (device) { pframe.classList.add(device); loadFrame(); layoutFrame(); stopSalute(); }
+    document.body.classList.toggle('framed', !!device);
+    const shown = device || natural();
+    sw.querySelectorAll('[data-device]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.device === shown)));
+    try { localStorage.setItem('sneg-device', next); } catch (e) {}
+  }
+  window.addEventListener('resize', () => { if (device === natural()) setDevice(device); else { layoutFrame(); setDevice(device || natural()); } });
+
+  sw.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.site) setSite(b.dataset.site);
+    if (b.dataset.device) setDevice(b.dataset.device);
+  });
   let initial = location.hash === '#kz' ? 'kz' : location.hash === '#psgr' ? 'psgr' : null;
   if (!initial) { try { initial = localStorage.getItem('sneg-site'); } catch (e) {} }
   setSite(initial === 'kz' ? 'kz' : 'psgr');
+  // #kz / #psgr change without reload (also used by the preview frame)
+  window.addEventListener('hashchange', () => { if (location.hash === '#kz' || location.hash === '#psgr') setSite(location.hash.slice(1)); });
+  if (!document.documentElement.classList.contains('embed')) {
+    let d = null; try { d = localStorage.getItem('sneg-device'); } catch (e) {}
+    setDevice(d === 'm' || d === 'd' ? d : natural());
+  }
   update();
 })();
 </script>
