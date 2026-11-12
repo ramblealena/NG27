@@ -543,8 +543,15 @@
     /* snowman exactly centred between the last rubric (ends at x 969) and the KZ/RU switcher (starts at x 1064):
        centre 1016.5 → 56.6px wide box spans 988.2–1044.8, i.e. 19.2px gap on each side */
     /* (computed from the rendered positions: rubrics are centred in the column, switcher sits 92px from its right edge) */
-    .kz .snowman { right: calc((100% - min(1280px, 100%)) / 2 + min(1280px, 100%) * .25 - 84.55px); }
-    .kz .snowman-wrap { transform-origin: calc(100% - (100% - min(1280px, 100%)) / 2 - min(1280px, 100%) * .25 + 55.71px) 76.26px; }
+    /* Demalys: 90% size (50.94×56.82) and 6px higher; still centred in the gap */
+    .kz .snowman {
+      right: calc((100% - min(1280px, 100%)) / 2 + min(1280px, 100%) * .25 - 81.72px);
+      top: 8px;
+      width: 50.94px;
+      height: 56.82px;
+      transform-origin: 24.98px 56.03px;
+    }
+    .kz .snowman-wrap { transform-origin: calc(100% - (100% - min(1280px, 100%)) / 2 - min(1280px, 100%) * .25 + 55.76px) 64.03px; }
 
     .kz .card-d { margin-top: 0; }             /* no banner: card right under the header */
   }
