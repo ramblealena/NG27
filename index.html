@@ -346,7 +346,7 @@
   .content-more p { margin: 0 0 16px; }
 
   /* ================= Desktop (Figma «1280-») =================
-     fixed header like on the site: 68px → 44px compact; header items and
+     fixed header like on the site: 64px → 44px compact (Figma had 68, the live site is 64); header items and
      the snowman sit in a 1280px column centred on wider screens */
   .page-d { display: none; }
   .hdr-d  { display: none; }
@@ -359,9 +359,9 @@
       max-width: none;
       height: 130px;
     }
-    .hdr-bg { height: 68px; }
-    .hdr.compact .hdr-bg { transform: scaleY(calc(44 / 68)); }
-    .anim, .snowman-clip { height: 130px; clip-path: inset(0 0 62px 0); }                 /* 130 − 68 */
+    .hdr-bg { height: 64px; }
+    .hdr.compact .hdr-bg { transform: scaleY(calc(44 / 64)); }
+    .anim, .snowman-clip { height: 130px; clip-path: inset(0 0 66px 0); }                 /* 130 − 64 */
     .hdr.compact .anim, .hdr.compact .snowman-clip { clip-path: inset(0 0 86px 0); }     /* 130 − 44 */
     .snow { height: 130px; --fade-from: 100; --fade-to: 130; }
 
@@ -381,17 +381,17 @@
       position: absolute;
       top: 0; left: 50%;
       width: min(1280px, 100%);
-      height: 68px;
+      height: 64px;
       transform: translateX(-50%);
     }
     .hdr-d img { position: absolute; display: block; transition: transform var(--t-logo) var(--ease-site); }
-    .hdr-d .logo   { left: 44px; top: 12px; width: 117px; height: 43px; transform-origin: 0 0; }
-    .hdr-d .nav    { left: 50%; top: 14px; width: 611px; height: 40px; transform: translateX(-50%); }
-    .hdr-d .search { right: 44px; top: 16px; width: 36px; height: 36px; }
+    .hdr-d .logo   { left: 44px; top: 10px; width: 117px; height: 43px; transform-origin: 0 0; }
+    .hdr-d .nav    { left: 50%; top: 12px; width: 611px; height: 40px; transform: translateX(-50%); }
+    .hdr-d .search { right: 44px; top: 14px; width: 36px; height: 36px; }
     /* compact (44px bar): logo 117×43 → 80×30 like the site, everything re-centred vertically */
-    .hdr.compact .hdr-d .logo   { transform: translateY(-5px) scale(.684); }
-    .hdr.compact .hdr-d .nav    { transform: translate(-50%, -12px); }
-    .hdr.compact .hdr-d .search { transform: translateY(-12px); }
+    .hdr.compact .hdr-d .logo   { transform: translateY(-3px) scale(.684); }
+    .hdr.compact .hdr-d .nav    { transform: translate(-50%, -10px); }
+    .hdr.compact .hdr-d .search { transform: translateY(-10px); }
 
     .page-d {
       display: block;
@@ -1015,7 +1015,7 @@
   function layout() {
     const d = desktopMQ.matches;
     return d
-      ? { bar: document.body.classList.contains('kz') ? 64 : 68, banner: document.querySelector('.promo-d'), br: 24,
+      ? { bar: 64, banner: document.querySelector('.promo-d'), br: 24,
           card: document.querySelector('.card-d'), cr: 24,
           // like the site: compact once the article's header block (title + photo) is scrolled past
           waypoint: () => document.querySelector('.card-d .photo').getBoundingClientRect().bottom }
@@ -1036,7 +1036,8 @@
   // gradient around the banner and the card — but never on top of them
   function pageClip(L) {
     const box = anim.getBoundingClientRect();
-    const w = box.width, h = box.height;
+    // snow below the bar belongs to the top of the page: it scrolls away with it
+    const w = box.width, h = Math.max(L.bar, box.height - Math.max(0, window.scrollY));
     const rel = el => { const r = el.getBoundingClientRect(); return [r.left - box.left, r.top - box.top, r.right - box.left, r.bottom - box.top]; };
     const [bx0, by0, bx1, by1] = rel(L.banner);
     const [cx0, cy0, cx1, cy1] = rel(L.card);
