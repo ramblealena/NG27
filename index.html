@@ -131,7 +131,16 @@
     clip-path: inset(0 0 38px 0);           /* same clip as the snow layer */
     transition: clip-path var(--t-bar) var(--ease-site);
   }
-  .hdr.compact .snow { opacity: .6; }       /* compact header: snow 40% more transparent */
+  .hdr.compact .snow { opacity: .6; }
+  /* page copy of the snow: under the banner and the card (z 0 < their z 1), scrolls with the page */
+  .snow-page {
+    position: absolute;
+    z-index: 0;
+    left: 0; top: 0;
+    width: 100%;
+    height: 90px;
+    pointer-events: none;
+  }       /* compact header: snow 40% more transparent */
   .hdr.compact .snowman-clip { clip-path: inset(0 0 50px 0); }
 
   /* snowman: fade + shrink 35% + slide down inside that frame.
@@ -399,6 +408,7 @@
       position: relative;      /* no z-index: its children stack with the header */
       padding: 64px 0 120px;           /* banner (ПСЖР) / card (Демалыс) flush with the 64px header */
     }
+    .page-d .snow-page { z-index: 1; height: 130px; }
     .page-d .grad {
       position: absolute;
       z-index: 0;
@@ -666,6 +676,8 @@
 
   <main class="screen">
     <div class="gradient"></div>
+    <!-- snow below the header is part of the page: it sits under the banner/card and scrolls with them -->
+    <canvas class="snow-page" aria-hidden="true"></canvas>
     <a class="promo-m" href="#" aria-label="Куда сгонять на пару дней? Есть варианты — Читать"></a>
     <img class="content" src="assets/article@2x.webp" width="375" height="955" alt="Как можно сэкономить на перелётах: сложный маршрут и частичное использование билета">
     <!-- the article continues as live text so the page can be scrolled past the header block -->
@@ -682,6 +694,7 @@
 
   <main class="page-d">
     <div class="grad"></div>
+    <canvas class="snow-page" aria-hidden="true"></canvas>
     <div class="d-col">
       <a class="promo-d" href="#" aria-label="Куда сгонять на пару дней? Есть варианты — Читать"></a>
       <article class="card-d">
@@ -1002,6 +1015,8 @@
     fade.addColorStop(Math.min(fTo / H, 1), 'rgba(0,0,0,0)');
   }
 
+  const pageCanvases = [...document.querySelectorAll('.snow-page')];
+  const pageCtx = pageCanvases.map(c => c.getContext('2d'));
   function resize() {
     if (!ready) return false;
     const rect = canvas.getBoundingClientRect();
@@ -1010,6 +1025,7 @@
     dpr = nd; W = rect.width; H = rect.height;
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
+    for (const pc of pageCanvases) { pc.width = canvas.width; pc.height = canvas.height; }
     build();
     return true;
   }
@@ -1051,6 +1067,14 @@
     ctx.fillStyle = fade;
     ctx.fillRect(0, 0, W, H);
     ctx.globalCompositeOperation = 'source-over';
+    // the same frame, one blit, into the page layer under the banner/card
+    for (let i = 0; i < pageCtx.length; i++) {
+      const pc = pageCtx[i];
+      if (!pc.canvas.offsetParent) continue;         // that layout is hidden
+      pc.setTransform(1, 0, 0, 1, 0, 0);
+      pc.clearRect(0, 0, pc.canvas.width, pc.canvas.height);
+      pc.drawImage(canvas, 0, 0);
+    }
   }
 
   // animation clock that only advances while the snow is actually running
@@ -1093,9 +1117,8 @@
 
   /* =========================================================
      Header: normal ↔ compact on scroll
-     The CSS does the animation; JS only flips one class (with hysteresis)
-     and, near the very top, extends the snow's clip into the two blue
-     corners beside the card's rounded top.
+     The CSS does the animation; JS only flips one class. The header's snow
+     is always clipped to the bar; snow below it lives in the page layer.
      ========================================================= */
   const hdr  = document.querySelector('.hdr');
   const anim = hdr.querySelector('.anim');
@@ -1117,35 +1140,6 @@
           waypoint: () => { const r = document.querySelector('.screen .content').getBoundingClientRect(); return r.top + 647 * r.width / 375; } };
   }
 
-  // counter-clockwise rounded rectangle → a hole in a nonzero-filled path
-  function hole(x0, y0, x1, y1, r) {
-    r = Math.min(r, (x1 - x0) / 2, (y1 - y0) / 2);
-    return `M${x0 + r} ${y0}A${r} ${r} 0 0 0 ${x0} ${y0 + r}V${y1 - r}A${r} ${r} 0 0 0 ${x0 + r} ${y1}` +
-           `H${x1 - r}A${r} ${r} 0 0 0 ${x1} ${y1 - r}V${y0 + r}A${r} ${r} 0 0 0 ${x1 - r} ${y0}Z`;
-  }
-
-  // snow + snowman are visible over the header bar, and over the page's blue
-  // gradient around the banner and the card — but never on top of them
-  function pageClip(L) {
-    const box = anim.getBoundingClientRect();
-    // snow below the bar belongs to the top of the page: it scrolls away with it
-    const w = box.width, h = Math.max(L.bar, box.height - Math.max(0, window.scrollY));
-    const rel = el => { const r = el.getBoundingClientRect(); return [r.left - box.left, r.top - box.top, r.right - box.left, r.bottom - box.top]; };
-    const [bx0, by0, bx1, by1] = rel(L.banner);
-    const [cx0, cy0, cx1, cy1] = rel(L.card);
-    const bannerHole = bx1 > bx0 ? hole(bx0, by0, bx1, by1, L.br) + ' ' : '';   // no banner on Demalys
-    return `path("M0 0H${w}V${L.bar}H0Z M0 0H${w}V${h}H0Z ` +
-      bannerHole + hole(cx0, cy0, cx1, Math.max(cy1, h + 40), L.cr) + '")';
-  }
-
-  function setClip(v) {
-    // only the snow gets the page-shaped clip; the snowman is always cut at the header bar
-    for (const el of [anim]) {
-      el.style.transition = v ? 'none' : '';
-      el.style.clipPath = v;
-    }
-  }
-
   function update() {
     ticking = false;
     const L = layout();
@@ -1157,8 +1151,6 @@
       clearTimeout(settling);
       settling = setTimeout(() => { settling = 0; update(); }, 320);   // let the CSS transition finish
     }
-    if (!compact && !settling) setClip(pageClip(L));
-    else if (anim.style.clipPath) setClip('');
   }
   window.addEventListener('scroll', () => {
     if (!ticking) { ticking = true; requestAnimationFrame(update); }
