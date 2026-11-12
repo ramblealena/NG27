@@ -455,6 +455,16 @@
   .kz .hdr-kz-m { display: block; }
   .hdr-kz-m .logo   { left: 16px;  top: 10px; width: 84px; height: 32px; }
   .hdr-kz-m .lang   { left: 139px; top: 10px; width: 124px; height: 32px; }
+  /* frosted glass under the KZ/RU switcher */
+  .glass-lang {
+    position: absolute;
+    border-radius: 12px;
+    -webkit-backdrop-filter: blur(3px);
+            backdrop-filter: blur(3px);
+    transition: transform var(--t-logo) var(--ease-site), opacity var(--t-bar) var(--ease-site);
+  }
+  .hdr-kz-m .glass-lang { left: 139px; top: 10px; width: 124px; height: 32px; }
+  .kz .hdr.compact .hdr-kz-m .glass-lang { opacity: 0; transform: translateY(-6px); }
   .hdr-kz-m .search { left: 275px; top: 8px;  width: 36px; height: 36px; }
   .hdr-kz-m .menu   { left: 323px; top: 8px;  width: 36px; height: 36px; }
   /* compact, as on the site: logo 63×24, switcher hidden, «Содержание» centred, buttons at 295 / 331 */
@@ -549,6 +559,8 @@
     .hdr-kz-d .glass span:nth-child(4) { left: 387px; width: 141px; }
     .hdr-kz-d .glass span:nth-child(5) { left: 532px; width: 125px; }
     .kz .hdr.compact .hdr-kz-d .glass { transform: translate(-50%, -10px); }
+    .hdr-kz-d .glass-lang { right: 92px; top: 16px; width: 124px; height: 32px; }
+    .kz .hdr.compact .hdr-kz-d .glass-lang { transform: translateY(-10px); }
     /* compact 44px bar: logo 80×30, everything re-centred */
     .kz .hdr.compact .hdr-kz-d .logo   { transform: translateY(-3px) scale(.684); }
     .kz .hdr.compact .hdr-kz-d .nav    { transform: translate(-50%, -10px); }
@@ -630,6 +642,7 @@
     <!-- Demalys (aviasales.kz) headers -->
     <div class="hdr-kz-m">
       <img class="logo"   src="assets/kz-m-logo@3x.png"   alt="demalys · aviasales.kz">
+      <span class="glass-lang" aria-hidden="true"></span>
       <img class="lang"   src="assets/kz-m-lang@3x.png"   alt="KZ / RU">
       <img class="search" src="assets/kz-m-search@3x.png" alt="Поиск">
       <img class="menu"   src="assets/kz-m-menu@3x.png"   alt="Меню">
@@ -639,6 +652,7 @@
       <!-- frosted glass under the rubric chips: snow behind them is softly blurred -->
       <div class="glass" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
       <img class="nav"    src="assets/kz-d-nav@2x.png"    alt="Путеводители, Опыт, Подборки, Инструкции, Лайфхаки">
+      <span class="glass-lang" aria-hidden="true"></span>
       <img class="lang"   src="assets/kz-d-lang@2x.png"   alt="KZ / RU">
       <img class="search" src="assets/kz-d-search@2x.png" alt="Поиск">
     </div>
