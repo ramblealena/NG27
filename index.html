@@ -528,6 +528,27 @@
     .hdr-kz-d .nav    { left: 50%;   top: 12.5px; width: 657px; height: 40px; transform: translateX(-50%); }
     .hdr-kz-d .lang   { right: 92px; top: 16px; width: 124px; height: 32px; }
     .hdr-kz-d .search { right: 44px; top: 14px; width: 36px; height: 36px; }
+    .hdr-kz-d .glass {
+      position: absolute;
+      left: 50%; top: 12.5px;
+      width: 657px; height: 40px;
+      transform: translateX(-50%);
+      transition: transform var(--t-logo) var(--ease-site);
+    }
+    .hdr-kz-d .glass span {
+      position: absolute;
+      top: 0; height: 40px;
+      border-radius: 12px;
+      -webkit-backdrop-filter: blur(3px);
+              backdrop-filter: blur(3px);
+    }
+    /* chip boxes from Figma (x inside the rubric row, widths) */
+    .hdr-kz-d .glass span:nth-child(1) { left: 0;     width: 158px; }
+    .hdr-kz-d .glass span:nth-child(2) { left: 162px; width: 91px; }
+    .hdr-kz-d .glass span:nth-child(3) { left: 257px; width: 126px; }
+    .hdr-kz-d .glass span:nth-child(4) { left: 387px; width: 141px; }
+    .hdr-kz-d .glass span:nth-child(5) { left: 532px; width: 125px; }
+    .kz .hdr.compact .hdr-kz-d .glass { transform: translate(-50%, -10px); }
     /* compact 44px bar: logo 80×30, everything re-centred */
     .kz .hdr.compact .hdr-kz-d .logo   { transform: translateY(-3px) scale(.684); }
     .kz .hdr.compact .hdr-kz-d .nav    { transform: translate(-50%, -10px); }
@@ -615,6 +636,8 @@
     </div>
     <div class="hdr-kz-d">
       <img class="logo"   src="assets/kz-d-logo@2x.png"   alt="demalys · aviasales.kz">
+      <!-- frosted glass under the rubric chips: snow behind them is softly blurred -->
+      <div class="glass" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
       <img class="nav"    src="assets/kz-d-nav@2x.png"    alt="Путеводители, Опыт, Подборки, Инструкции, Лайфхаки">
       <img class="lang"   src="assets/kz-d-lang@2x.png"   alt="KZ / RU">
       <img class="search" src="assets/kz-d-search@2x.png" alt="Поиск">
