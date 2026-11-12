@@ -363,7 +363,8 @@
     .hdr.compact .hdr-bg { transform: scaleY(calc(44 / 64)); }
     .anim, .snowman-clip { height: 130px; clip-path: inset(0 0 66px 0); }                 /* 130 − 64 */
     .hdr.compact .anim, .hdr.compact .snowman-clip { clip-path: inset(0 0 86px 0); }     /* 130 − 44 */
-    .snow { height: 130px; --fade-from: 100; --fade-to: 130; }
+    /* desktop: no common fade line — every flake melts away at its own height (see build/draw) */
+    .snow { height: 130px; --fade-from: 129; --fade-to: 130; --own-fade: 1; }
 
     /* snowman: right edge 100.3px inside the centred 1280 column (Figma x 1123.1) */
     .snowman-wrap { transform-origin: calc(100% - (100% - min(1280px, 100%)) / 2 - 129.14px) 76.26px; }
@@ -854,6 +855,9 @@
   function build() {
     seed = 20260;
     seed2 = 777;
+    let seed3 = 4242;                                // own stream: doesn't disturb positions/kinds
+    const rnd3 = () => (seed3 = (seed3 * 16807) % 2147483647) / 2147483647;
+    const ownFade = getComputedStyle(canvas).getPropertyValue('--own-fade').trim() === '1';
     const total = Math.round(W / 375 * 46);
     flakes = [];
     for (const L of LAYERS) {
@@ -890,6 +894,8 @@
           f.rot0  = rnd2() * Math.PI * 2;
           f.spin  = (0.35 + rnd2() * 0.4) * (rnd2() < 0.5 ? -1 : 1);   // amplitude, rad (~20–43°)
           f.spinP = rnd2() * Math.PI * 2;
+          // desktop: each flake fades out over 18px ending somewhere between 40px and the bottom
+          if (ownFade) { f.fadeEnd = 40 + rnd3() * (H - 42); f.fadeLen = 18; }
         }
         // the smallest 'far' layer is switched off; its random draws above are still made,
         // so every remaining flake keeps exactly the same position, size and opacity
@@ -945,7 +951,13 @@
       let x = f.x + Math.sin(sway + f.ph1) * f.swayA + Math.cos(a2) * f.spinA;
       y += s2 * f.spinA * 0.6;
       x = ((x % W) + W) % W;
-      ctx.globalAlpha = f.alpha;
+      let a = f.alpha;
+      if (f.fadeEnd) {
+        const k = (f.fadeEnd - y) / f.fadeLen;
+        if (k <= 0) continue;                        // already melted
+        if (k < 1) a *= k * k * (3 - 2 * k);         // smooth fade
+      }
+      ctx.globalAlpha = a;
       {
         const a = f.rot0 + f.spin * Math.sin(sway + f.spinP), c = Math.cos(a) * dpr, sn = Math.sin(a) * dpr;
         ctx.setTransform(c, sn, -sn, c, x * dpr, y * dpr);
